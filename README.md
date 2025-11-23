@@ -1,6 +1,52 @@
-# Welcome to your Lovable project
+# KiLearning - Tema 1: Fundamentos de Machine Learning
 
-## Project info
+**Equipe:** João Guilherme, Zenilton, Bruna, Igor Dias, Pedro, Ciro  
+**Disciplina:** Inteligência Artificial 2 - 2025.2
+
+## 🎯 Sobre
+
+Demonstração interativa dos três paradigmas de Aprendizagem de Máquina:
+- **Aprendizado Supervisionado** (Classificação Linear)
+- **Aprendizado Não Supervisionado** (K-Means Clustering)
+- **Aprendizado por Reforço** (Q-Learning)
+
+## 🚀 Como Executar
+
+### Opção 1: Aplicação Web (Recomendado)
+
+```bash
+npm install
+npm run dev
+```
+
+Acesse: `http://localhost:8080`
+
+### Opção 2: Notebook Python (Google Colab)
+
+1. Abra o arquivo `KiLearning_Colab_Notebook.py` no Google Colab
+2. Ou copie o conteúdo para um novo notebook
+3. Execute as células sequencialmente
+
+## 📁 Arquivos Importantes
+
+- **INSTRUCOES.md** - Guia completo com todas as instruções
+- **KiLearning_Colab_Notebook.py** - Código Python para Colab
+- **src/pages/Index.tsx** - Aplicação web principal
+- **src/components/ml-demos/** - Componentes de demonstração
+
+## 📚 Documentação Completa
+
+Veja **INSTRUCOES.md** para:
+- Instruções detalhadas de execução
+- Explicação das funcionalidades
+- Código de exemplo
+- Referências bibliográficas
+
+---
+
+**Data de Apresentação:** 02 de dezembro de 2025
+
+## Project info (Lovable)
 
 **URL**: https://lovable.dev/projects/f227f0e7-426e-46d8-88c9-03c921d9cdd7
 
