@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Zap, Play, RotateCcw, Trophy } from "lucide-react";
+import { Zap, Play, RotateCcw, Trophy, Download } from "lucide-react";
 import { toast } from "sonner";
+import GIF from "gif.js";
 
 interface GridCell {
   x: number;
@@ -21,6 +22,9 @@ const ReinforcementLearning = () => {
   const [totalReward, setTotalReward] = useState(0);
   const [episodeCount, setEpisodeCount] = useState(0);
   const [qTable, setQTable] = useState<number[][][]>([]);
+  const [isGeneratingGif, setIsGeneratingGif] = useState(false);
+  const [gifUrl, setGifUrl] = useState<string | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // Inicializa o grid
   useEffect(() => {
@@ -158,6 +162,128 @@ const ReinforcementLearning = () => {
     toast.success("Treinamento concluído!");
   };
 
+  const captureFrame = async (): Promise<HTMLCanvasElement> => {
+    return new Promise((resolve) => {
+      if (!gridRef.current) return;
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      canvas.width = 400;
+      canvas.height = 400;
+      
+      const cellSize = 80;
+      const gap = 2;
+      
+      grid.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          const posX = x * cellSize;
+          const posY = y * cellSize;
+          
+          // Background color
+          if (cell.x === agentPos.x && cell.y === agentPos.y) {
+            ctx.fillStyle = '#9b87f5';
+          } else if (cell.type === 'goal') {
+            ctx.fillStyle = '#0EA5E9';
+          } else if (cell.type === 'trap') {
+            ctx.fillStyle = '#ef4444';
+          } else {
+            ctx.fillStyle = '#1A1F2C';
+          }
+          
+          ctx.fillRect(posX, posY, cellSize - gap, cellSize - gap);
+          
+          // Emojis
+          ctx.font = '40px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          
+          if (cell.x === agentPos.x && cell.y === agentPos.y) {
+            ctx.fillText('🤖', posX + cellSize/2, posY + cellSize/2);
+          } else if (cell.type === 'goal') {
+            ctx.fillText('🎯', posX + cellSize/2, posY + cellSize/2);
+          } else if (cell.type === 'trap') {
+            ctx.fillText('💥', posX + cellSize/2, posY + cellSize/2);
+          }
+        });
+      });
+      
+      resolve(canvas);
+    });
+  };
+
+  const generateGif = async () => {
+    if (isTraining || qTable.length === 0) {
+      toast.error("Treine o agente primeiro!");
+      return;
+    }
+
+    setIsGeneratingGif(true);
+    toast.info("Gerando GIF...");
+
+    const gif = new GIF({
+      workers: 2,
+      quality: 10,
+      width: 400,
+      height: 400,
+      workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
+    });
+
+    let currentX = 0;
+    let currentY = gridSize - 1;
+    const maxSteps = 20;
+    let steps = 0;
+
+    // Captura frame inicial
+    let frame = await captureFrame();
+    gif.addFrame(frame, { delay: 500 });
+
+    while (steps < maxSteps) {
+      const action = qTable[currentY][currentX].indexOf(
+        Math.max(...qTable[currentY][currentX])
+      );
+
+      let nextX = currentX;
+      let nextY = currentY;
+      
+      switch(action) {
+        case 0: nextY--; break;
+        case 1: nextX++; break;
+        case 2: nextY++; break;
+        case 3: nextX--; break;
+      }
+
+      if (!isValidMove(nextX, nextY)) break;
+
+      setAgentPos({ x: nextX, y: nextY });
+      currentX = nextX;
+      currentY = nextY;
+      steps++;
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+      frame = await captureFrame();
+      gif.addFrame(frame, { delay: 500 });
+
+      if (grid[currentY][currentX].type === 'goal' || 
+          grid[currentY][currentX].type === 'trap') {
+        break;
+      }
+    }
+
+    gif.on('finished', (blob) => {
+      const url = URL.createObjectURL(blob);
+      setGifUrl(url);
+      setIsGeneratingGif(false);
+      toast.success("GIF gerado com sucesso!");
+      
+      // Volta posição inicial
+      setAgentPos({ x: 0, y: gridSize - 1 });
+    });
+
+    gif.render();
+  };
+
   const demonstratePath = async () => {
     if (isTraining || qTable.length === 0) {
       toast.error("Treine o agente primeiro!");
@@ -172,7 +298,6 @@ const ReinforcementLearning = () => {
     while (steps < maxSteps) {
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Escolhe melhor ação
       const action = qTable[currentY][currentX].indexOf(
         Math.max(...qTable[currentY][currentX])
       );
@@ -207,10 +332,21 @@ const ReinforcementLearning = () => {
       }
     }
 
-    // Volta posição inicial
     setTimeout(() => {
       setAgentPos({ x: 0, y: gridSize - 1 });
     }, 1000);
+  };
+
+  const downloadGif = () => {
+    if (!gifUrl) return;
+    
+    const link = document.createElement('a');
+    link.href = gifUrl;
+    link.download = 'agente-q-learning.gif';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Download iniciado!");
   };
 
   const reset = () => {
@@ -290,6 +426,25 @@ const ReinforcementLearning = () => {
                 <Trophy className="w-4 h-4 mr-2" />
                 Demonstrar Caminho
               </Button>
+              <Button 
+                onClick={generateGif}
+                disabled={isTraining || qTable.length === 0 || isGeneratingGif}
+                variant="default"
+                className="bg-gradient-primary"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                {isGeneratingGif ? "Gerando GIF..." : "Gerar GIF"}
+              </Button>
+              {gifUrl && (
+                <Button 
+                  onClick={downloadGif}
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar GIF
+                </Button>
+              )}
               <Button onClick={reset} variant="outline">
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Reiniciar
@@ -300,7 +455,7 @@ const ReinforcementLearning = () => {
           {/* Grid Visualization */}
           <div className="space-y-4">
             <div className="flex justify-center">
-              <div className="inline-grid gap-2" style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))` }}>
+              <div ref={gridRef} className="inline-grid gap-2" style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))` }}>
                 {grid.map((row, y) =>
                   row.map((cell, x) => (
                     <div
