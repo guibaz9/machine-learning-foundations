@@ -162,53 +162,51 @@ const ReinforcementLearning = () => {
     toast.success("Treinamento concluído!");
   };
 
-  const captureFrame = async (): Promise<HTMLCanvasElement> => {
+  const captureFrame = async (agentX: number, agentY: number): Promise<HTMLCanvasElement> => {
     return new Promise((resolve) => {
-      if (!gridRef.current) return;
-      
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       canvas.width = 400;
       canvas.height = 400;
-      
+
       const cellSize = 80;
       const gap = 2;
-      
+
       grid.forEach((row, y) => {
         row.forEach((cell, x) => {
           const posX = x * cellSize;
           const posY = y * cellSize;
-          
+
           // Background color
-          if (cell.x === agentPos.x && cell.y === agentPos.y) {
-            ctx.fillStyle = '#9b87f5';
-          } else if (cell.type === 'goal') {
-            ctx.fillStyle = '#0EA5E9';
-          } else if (cell.type === 'trap') {
-            ctx.fillStyle = '#ef4444';
+          if (cell.x === agentX && cell.y === agentY) {
+            ctx.fillStyle = "#9b87f5";
+          } else if (cell.type === "goal") {
+            ctx.fillStyle = "#0EA5E9";
+          } else if (cell.type === "trap") {
+            ctx.fillStyle = "#ef4444";
           } else {
-            ctx.fillStyle = '#1A1F2C';
+            ctx.fillStyle = "#1A1F2C";
           }
-          
+
           ctx.fillRect(posX, posY, cellSize - gap, cellSize - gap);
-          
+
           // Emojis
-          ctx.font = '40px Arial';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          
-          if (cell.x === agentPos.x && cell.y === agentPos.y) {
-            ctx.fillText('🤖', posX + cellSize/2, posY + cellSize/2);
-          } else if (cell.type === 'goal') {
-            ctx.fillText('🎯', posX + cellSize/2, posY + cellSize/2);
-          } else if (cell.type === 'trap') {
-            ctx.fillText('💥', posX + cellSize/2, posY + cellSize/2);
+          ctx.font = "40px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          if (cell.x === agentX && cell.y === agentY) {
+            ctx.fillText("🤖", posX + cellSize / 2, posY + cellSize / 2);
+          } else if (cell.type === "goal") {
+            ctx.fillText("🎯", posX + cellSize / 2, posY + cellSize / 2);
+          } else if (cell.type === "trap") {
+            ctx.fillText("💥", posX + cellSize / 2, posY + cellSize / 2);
           }
         });
       });
-      
+
       resolve(canvas);
     });
   };
@@ -227,7 +225,7 @@ const ReinforcementLearning = () => {
       quality: 10,
       width: 400,
       height: 400,
-      workerScript: '/gif.worker.js'
+      workerScript: "/gif.worker.js",
     });
 
     let currentX = 0;
@@ -236,7 +234,7 @@ const ReinforcementLearning = () => {
     let steps = 0;
 
     // Captura frame inicial
-    let frame = await captureFrame();
+    let frame = await captureFrame(currentX, currentY);
     gif.addFrame(frame, { delay: 500 });
 
     while (steps < maxSteps) {
@@ -246,44 +244,53 @@ const ReinforcementLearning = () => {
 
       let nextX = currentX;
       let nextY = currentY;
-      
-      switch(action) {
-        case 0: nextY--; break;
-        case 1: nextX++; break;
-        case 2: nextY++; break;
-        case 3: nextX--; break;
+
+      switch (action) {
+        case 0:
+          nextY--;
+          break;
+        case 1:
+          nextX++;
+          break;
+        case 2:
+          nextY++;
+          break;
+        case 3:
+          nextX--;
+          break;
       }
 
       if (!isValidMove(nextX, nextY)) break;
 
-      setAgentPos({ x: nextX, y: nextY });
+      // atualiza posição local e também o estado para usuário ver o movimento
       currentX = nextX;
       currentY = nextY;
+      setAgentPos({ x: currentX, y: currentY });
       steps++;
 
-      await new Promise(resolve => setTimeout(resolve, 50));
-      frame = await captureFrame();
+      frame = await captureFrame(currentX, currentY);
       gif.addFrame(frame, { delay: 500 });
 
-      if (grid[currentY][currentX].type === 'goal' || 
-          grid[currentY][currentX].type === 'trap') {
+      if (
+        grid[currentY][currentX].type === "goal" ||
+        grid[currentY][currentX].type === "trap"
+      ) {
         break;
       }
     }
 
-    gif.on('finished', (blob) => {
+    gif.on("finished", (blob) => {
       const url = URL.createObjectURL(blob);
       setGifUrl(url);
       setIsGeneratingGif(false);
       toast.success("GIF gerado com sucesso!");
-      
+
       // Volta posição inicial
       setAgentPos({ x: 0, y: gridSize - 1 });
     });
 
     gif.render();
   };
-
   const demonstratePath = async () => {
     if (isTraining || qTable.length === 0) {
       toast.error("Treine o agente primeiro!");
